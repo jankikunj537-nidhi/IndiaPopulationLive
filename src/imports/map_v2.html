@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f0f4ff">
+  <title>India Live Population &amp; Birth Ticker &mdash; Bharat Demographic Engine v2</title>
+  <meta name="description" content="Premium India population dashboard with glassmorphism UI, weather-reactive ocean waves, Janma Predictor, SRS Quiz, Mandal Leaderboards, gamification. Sept 2026 baseline.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <style>
+    :root {
+      --font-body:'Inter',system-ui,-apple-system,sans-serif;
+      --font-heading:'Cinzel',serif;
+      --font-mono:'Space Grotesk',monospace;
+      --glass-bg:rgba(255,255,255,0.72);
+      --glass-bg-strong:rgba(255,255,255,0.90);
+      --glass-border:rgba(255,255,255,0.58);
+      --glass-shadow:0 8px 32px rgba(99,102,241,0.10),0 2px 8px rgba(0,0,0,0.05);
+      --glass-shadow-hover:0 16px 48px rgba(99,102,241,0.18),0 4px 16px rgba(0,0,0,0.08);
+      --text-primary:#0f172a;
+      --text-secondary:#475569;
+      --text-muted:#94a3b8;
+      --indigo:#6366f1;
+      --indigo-light:#818cf8;
+      --indigo-soft:rgba(99,102,241,0.12);
+      --emerald:#10b981;
+      --emerald-soft:rgba(16,185,129,0.12);
+      --amber:#f59e0b;
+      --amber-soft:rgba(245,158,11,0.12);
+      --rose:#f43f5e;
+      --rose-soft:rgba(244,63,94,0.12);
+      --violet:#8b5cf6;
+      --saffron:#f97316;
+      --flag-green:#15803d;
+      --ashoka-blue:#1d4ed8;
+      --radius-sm:10px;
+      --radius-md:16px;
+      --radius-lg:22px;
+      --bottom-nav-h:64px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;overflow-x:hidden;max-width:100vw;}
+    body{
+      font-family:var(--font-body);min-height:100vh;line-height:1.55;
+      color:var(--text-primary);overflow-x:hidden;max-width:100vw;
+      background-color:#eef2ff;
+      background-image:
+        radial-gradient(ellipse at 20% 10%,rgba(99,102,241,0.18) 0%,transparent 55%),
+        radial-gradient(ellipse at 80% 90%,rgba(16,185,129,0.15) 0%,transparent 50%),
+        radial-gradient(ellipse at 70% 20%,rgba(249,115,22,0.10) 0%,transparent 45%),
+        radial-gradient(ellipse at 10% 80%,rgba(14,165,233,0.12) 0%,transparent 50%);
+      background-attachment:fixed;
+    }
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.25);border-radius:10px;}
+    .container{max-width:1280px;width:100%;box-sizing:border-box;overflow-x:hidden;margin:0 auto;padding:1rem 1rem calc(var(--bottom-nav-h) + 1.5rem);position:relative;z-index:1;}
+    @media(min-width:1024px){.container{padding-bottom:2rem;}}
+    .glass{background:var(--glass-bg);border:1.5px solid var(--glass-border);border-radius:var(--radius-md);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);box-shadow:var(--glass-shadow);transition:box-shadow 0.3s ease;}
+    /* HABIT BAR */
+    .habit-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.6rem;padding:0.65rem 1.2rem;margin-bottom:0.85rem;border-radius:var(--radius-lg);}
+    .habit-stat-cluster{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;}
+    .habit-chip{display:inline-flex;align-items:center;gap:0.35rem;padding:0.35rem 0.8rem;border-radius:30px;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.22s;user-select:none;border:1.5px solid transparent;}
+    .habit-chip:hover{transform:translateY(-2px) scale(1.03);}
+    .streak-chip{color:#ea580c;background:rgba(234,88,12,0.10);border-color:rgba(234,88,12,0.25);}
+    .xp-chip{color:var(--emerald);background:var(--emerald-soft);border-color:rgba(16,185,129,0.3);}
+    .mudra-chip{color:var(--amber);background:var(--amber-soft);border-color:rgba(245,158,11,0.3);}
+    .vitality-chip{color:var(--rose);background:var(--rose-soft);border-color:rgba(244,63,94,0.3);}
+    .mandal-chip{color:var(--indigo);background:var(--indigo-soft);border-color:rgba(99,102,241,0.3);}
+    .flame-icon{animation:flamePulse 1.2s ease-in-out infinite alternate;display:inline-block;}
+    @keyframes flamePulse{0%{transform:scale(1) rotate(-4deg);}100%{transform:scale(1.3) rotate(5deg);}}
+    .level-progress-wrapper{display:flex;align-items:center;gap:0.5rem;min-width:160px;}
+    .level-label{font-size:0.75rem;font-weight:700;color:var(--indigo);white-space:nowrap;}
+    .xp-bar-bg{flex:1;height:6px;background:rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;}
+    .xp-bar-fill{height:100%;background:linear-gradient(90deg,var(--indigo),var(--violet));border-radius:10px;transition:width 0.6s ease;width:0%;}
+    /* HEADER */
+    .header-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;padding:1.1rem 1.5rem;border-radius:var(--radius-lg);margin-bottom:1rem;position:relative;overflow:hidden;}
+    .header-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--saffron),rgba(255,255,255,0) 40%,var(--flag-green));border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+    .title-group{display:flex;align-items:center;gap:0.9rem;}
+    .chakra-icon{width:44px;height:44px;flex-shrink:0;animation:rotateChakra 24s linear infinite;filter:drop-shadow(0 0 8px rgba(29,78,216,0.5));}
+    @keyframes rotateChakra{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+    .title-group h1{font-family:var(--font-heading);font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--saffron) 0%,var(--indigo) 60%,var(--flag-green) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;}
+    .title-group p{font-size:0.8rem;color:var(--text-secondary);margin-top:0.15rem;}
+    .header-controls{display:flex;align-items:center;gap:0.5rem;}
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:0.4rem;background:var(--glass-bg-strong);color:var(--text-primary);border:1.5px solid var(--glass-border);padding:0.45rem 0.9rem;border-radius:var(--radius-sm);font-size:0.84rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s;user-select:none;min-height:38px;}
+    .btn:hover{border-color:var(--indigo-light);background:rgba(99,102,241,0.08);transform:translateY(-1px);}
+    .btn-active{background:var(--indigo)!important;color:#fff!important;border-color:var(--indigo)!important;box-shadow:0 4px 14px rgba(99,102,241,0.35);}
+    /* DESKTOP NAV */
+    .mode-nav{display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.3rem;margin-bottom:1rem;scrollbar-width:none;}
+    .mode-nav::-webkit-scrollbar{display:none;}
+    .nav-tab{display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.1rem;background:var(--glass-bg);border:1.5px solid var(--glass-border);border-radius:var(--radius-md);font-size:0.88rem;font-weight:700;color:var(--text-secondary);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all 0.25s;backdrop-filter:blur(12px);}
+    .nav-tab:hover{color:var(--text-primary);border-color:rgba(99,102,241,0.4);transform:translateY(-2px);}
+    .nav-tab.active{background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.1));color:var(--indigo);border-color:var(--indigo-light);box-shadow:0 4px 18px rgba(99,102,241,0.2);}
+    .tab-badge{font-size:0.68rem;background:rgba(99,102,241,0.12);color:var(--indigo);padding:0.1rem 0.45rem;border-radius:20px;font-weight:800;}
+    .nav-tab.active .tab-badge{background:var(--indigo);color:#fff;}
+    /* BOTTOM NAV */
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-h);z-index:999;display:flex;align-items:center;justify-content:space-around;padding:0 0.5rem;padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(255,255,255,0.92);border-top:1.5px solid rgba(99,102,241,0.15);backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);box-shadow:0 -4px 24px rgba(99,102,241,0.10);}
+    .bottom-nav-btn{display:flex;flex-direction:column;align-items:center;gap:0.15rem;background:none;border:none;cursor:pointer;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);font-family:inherit;transition:all 0.2s;flex:1;max-width:72px;color:var(--text-muted);-webkit-tap-highlight-color:transparent;position:relative;}
+    .bottom-nav-btn .bn-icon{font-size:1.35rem;line-height:1;transition:transform 0.2s;}
+    .bottom-nav-btn .bn-label{font-size:0.62rem;font-weight:700;letter-spacing:0.2px;line-height:1;}
+    .bottom-nav-btn.active{color:var(--indigo);}
+    .bottom-nav-btn.active .bn-icon{transform:scale(1.15);}
+    .bottom-nav-btn.active::before{content:'';position:absolute;top:0;width:32px;height:3px;background:var(--indigo);border-radius:0 0 4px 4px;}
+    @media(min-width:1024px){.bottom-nav{display:none;}.mode-nav{display:flex;}}
+    @media(max-width:1023px){.mode-nav{display:none;}}
+    /* HERO */
+    .hero-stat-card{text-align:center;padding:1.4rem 1rem 1.2rem;margin-bottom:1rem;position:relative;overflow:hidden;}
+    .hero-stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3.5px;background:linear-gradient(90deg,var(--saffron),rgba(255,255,255,0) 40%,var(--flag-green));}
+    .hero-label{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-secondary);margin-bottom:0.3rem;}
+    .hero-number{font-family:var(--font-heading);font-size:3.2rem;font-weight:900;background:linear-gradient(135deg,var(--indigo) 0%,var(--violet) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;}
+    .hero-number.tick-flash{animation:tickFlash 0.15s ease;}
+    @keyframes tickFlash{0%{transform:scale(1);}50%{transform:scale(1.015);}100%{transform:scale(1);}}
+    .stat-badge-row{display:flex;flex-wrap:wrap;justify-content:center;gap:0.6rem;margin-top:0.6rem;font-size:0.8rem;}
+    .stat-pill{background:var(--glass-bg-strong);border:1px solid var(--glass-border);padding:0.25rem 0.75rem;border-radius:20px;display:inline-flex;align-items:center;gap:0.4rem;font-weight:600;}
+    .pulse-dot{width:7px;height:7px;background:var(--emerald);border-radius:50%;box-shadow:0 0 0 0 rgba(16,185,129,0.7);animation:pulse 1.5s infinite;}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,0.7);}70%{box-shadow:0 0 0 8px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+    /* VIEWS */
+    .views-wrapper{position:relative;overflow:hidden;width:100%;max-width:100%;}
+    .views-track{display:flex;width:100%;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);will-change:transform;}
+    .view-section{flex:0 0 100%;width:100%;max-width:100%;min-width:0;opacity:0;transform:translateY(12px);transition:opacity 0.35s ease,transform 0.35s ease;box-sizing:border-box;}
+    .view-section.active-view{opacity:1;transform:translateY(0);}
+    /* GRID */
+    .dashboard-grid{display:grid;grid-template-columns:1.3fr 0.7fr;gap:1.1rem;width:100%;max-width:100%;}
+    @media(max-width:900px){.dashboard-grid{grid-template-columns:1fr;}}
+    .card{padding:1.3rem;position:relative;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
+    .card-title-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;padding-bottom:0.6rem;border-bottom:1px solid rgba(99,102,241,0.12);}
+    .card-title{font-size:1rem;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:0.45rem;}
+    /* SUB-TABS */
+    .sub-tabs-bar{display:flex;gap:0.4rem;overflow-x:auto;padding-bottom:0.25rem;margin-bottom:0.85rem;scrollbar-width:none;}
+    .sub-tabs-bar::-webkit-scrollbar{display:none;}
+    .sub-tab{display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.75rem;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);border-radius:20px;font-size:0.78rem;font-weight:700;color:var(--text-secondary);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all 0.2s;}
+    .sub-tab:hover,.sub-tab.active{background:var(--indigo-soft);border-color:var(--indigo-light);color:var(--indigo);}
+    /* CONTROLS */
+    .map-controls-bar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:0.5rem;margin-bottom:0.75rem;}
+    .control-group{display:flex;align-items:center;gap:0.45rem;}
+    select.custom-select{background:var(--glass-bg-strong);color:var(--text-primary);border:1.5px solid var(--glass-border);padding:0.42rem 0.75rem;border-radius:var(--radius-sm);font-size:0.84rem;font-family:inherit;font-weight:600;outline:none;cursor:pointer;transition:border 0.2s;min-height:38px;}
+    select.custom-select:focus{border-color:var(--indigo-light);}
+    /* MAP */
+    #map-container{position:relative;width:100%;aspect-ratio:380/440;max-height:520px;display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,#020e1c 0%,#031c33 50%,#010a14 100%);border-radius:var(--radius-md);box-shadow:inset 0 0 0 1px rgba(99,102,241,0.2),0 12px 35px rgba(0,0,0,0.3);overflow:hidden;}
+    .map-skeleton{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;background:linear-gradient(180deg,#020e1c 0%,#031c33 50%,#010a14 100%);transition:opacity 0.6s ease;}
+    .map-skeleton.hidden{opacity:0;pointer-events:none;}
+    .map-skeleton-spinner{width:48px;height:48px;border:3px solid rgba(99,102,241,0.2);border-top-color:var(--indigo);border-radius:50%;animation:spin 0.9s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .map-skeleton-text{font-size:0.82rem;color:rgba(255,255,255,0.5);font-weight:600;}
+    .sea-waves-backdrop{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:hidden;}
+    #sea-waves-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
+    .sea-state-hud{position:absolute;bottom:12px;right:12px;z-index:4;background:rgba(2,14,28,0.75);border:1px solid rgba(99,102,241,0.3);border-radius:var(--radius-sm);padding:0.35rem 0.7rem;font-size:0.72rem;font-weight:700;color:rgba(200,210,255,0.9);backdrop-filter:blur(8px);transition:all 0.8s ease;pointer-events:none;}
+    .ocean-depth-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 50% 48%,rgba(2,20,38,0.08) 0%,rgba(1,10,22,0.45) 75%,rgba(0,6,14,0.80) 100%);pointer-events:none;}
+    #map{position:relative;z-index:2;width:100%;height:100%;display:flex;justify-content:center;align-items:center;}
+    #map svg{width:100%;height:100%;max-height:100%;filter:drop-shadow(0 14px 30px rgba(0,0,0,0.8));object-fit:contain;}
+    path.state-path{transition:fill 0.3s ease,stroke 0.2s ease,filter 0.2s ease;}
+    path.state-path:hover{filter:brightness(1.25) drop-shadow(0 0 8px rgba(99,102,241,0.6));}
+    .floating-emoji{font-size:15px;font-weight:800;fill:#fff;pointer-events:none;font-family:var(--font-body);}
+    .map-legend{display:flex;align-items:center;justify-content:space-between;margin-top:0.85rem;padding-top:0.7rem;border-top:1px solid rgba(99,102,241,0.12);font-size:0.78rem;color:var(--text-secondary);font-weight:600;}
+    .gradient-bar-wrapper{display:flex;align-items:center;gap:0.5rem;flex-grow:1;max-width:240px;margin:0 0.75rem;}
+    .gradient-bar{height:8px;flex-grow:1;border-radius:6px;background:linear-gradient(90deg,#15803d 0%,#FFFFFF 50%,#f97316 100%);border:1px solid rgba(99,102,241,0.15);}
+    #tooltip{position:absolute;visibility:hidden;background:rgba(15,23,42,0.92);color:#f8fafc;border:1px solid rgba(99,102,241,0.4);padding:0.65rem 0.9rem;border-radius:var(--radius-sm);font-size:0.8rem;box-shadow:0 8px 24px rgba(0,0,0,0.3);pointer-events:none;z-index:100;max-width:220px;backdrop-filter:blur(8px);line-height:1.5;}
+    /* DETAIL */
+    .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;padding-bottom:0.7rem;border-bottom:1px solid rgba(99,102,241,0.12);}
+    .detail-title{font-family:var(--font-heading);font-size:1.25rem;font-weight:800;color:var(--text-primary);}
+    .detail-subtitle{font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;}
+    .metric-box-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.65rem;margin-bottom:1.1rem;}
+    .metric-box{background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.14);border-radius:var(--radius-sm);padding:0.8rem;transition:all 0.2s;}
+    .metric-box:hover{border-color:rgba(99,102,241,0.35);transform:translateY(-2px);}
+    .metric-box .label{font-size:0.72rem;color:var(--text-muted);margin-bottom:0.2rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
+    .metric-box .value{font-size:1.1rem;font-weight:800;color:var(--text-primary);font-family:var(--font-mono);}
+    .feed-panel{margin-top:0.9rem;}
+    .feed-title{font-size:0.82rem;font-weight:700;color:var(--text-secondary);margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;}
+    .feed-list{list-style:none;max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:0.35rem;padding-right:0.2rem;}
+    .feed-item{background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.12);border-left:3px solid var(--indigo-light);padding:0.45rem 0.7rem;border-radius:6px;font-size:0.8rem;display:flex;justify-content:space-between;align-items:center;animation:fadeInItem 0.25s ease;}
+    @keyframes fadeInItem{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+    /* PREDICTOR */
+    .predictor-card{padding:1.5rem;}
+    .predictor-hero-banner{background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(16,185,129,0.08));border:1px solid rgba(99,102,241,0.2);border-radius:var(--radius-md);padding:1.25rem;text-align:center;margin-bottom:1.4rem;}
+    .predictor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0.65rem;margin-bottom:1.4rem;max-height:370px;overflow-y:auto;padding-right:0.3rem;}
+    @media(max-width:480px){.predictor-grid{grid-template-columns:1fr 1fr;}}
+    .bet-state-btn{background:rgba(99,102,241,0.04);border:1.5px solid rgba(99,102,241,0.15);border-radius:var(--radius-sm);padding:0.75rem;text-align:left;cursor:pointer;font-family:inherit;transition:all 0.22s;position:relative;}
+    .bet-state-btn:hover{border-color:var(--indigo-light);transform:translateY(-2px);box-shadow:0 4px 14px rgba(99,102,241,0.18);}
+    .bet-state-btn.selected-target{border-color:var(--emerald);background:rgba(16,185,129,0.1);box-shadow:0 0 16px rgba(16,185,129,0.25);}
+    .bet-state-name{font-weight:700;font-size:0.87rem;color:var(--text-primary);}
+    .bet-state-meta{font-size:0.72rem;color:var(--text-muted);margin-top:0.25rem;display:flex;justify-content:space-between;}
+    .multiplier-tag{font-weight:800;color:var(--emerald);background:var(--emerald-soft);padding:0.1rem 0.4rem;border-radius:4px;}
+    .predictor-action-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;padding:0.85rem 1rem;background:rgba(99,102,241,0.05);border-radius:var(--radius-sm);border:1px solid rgba(99,102,241,0.15);}
+    /* QUIZ */
+    .quiz-card{padding:1.75rem;max-width:780px;margin:0 auto;}
+    .quiz-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;padding-bottom:0.7rem;border-bottom:1px solid rgba(99,102,241,0.12);}
+    .quiz-question-box{font-size:1.2rem;font-weight:800;margin-bottom:1.4rem;line-height:1.45;color:var(--text-primary);}
+    .quiz-options-list{display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1.4rem;}
+    .quiz-option-btn{background:rgba(99,102,241,0.05);border:1.5px solid rgba(99,102,241,0.18);border-radius:var(--radius-md);padding:0.95rem 1.2rem;font-size:0.93rem;font-weight:600;text-align:left;cursor:pointer;color:var(--text-primary);font-family:inherit;transition:all 0.2s;display:flex;align-items:center;justify-content:space-between;min-height:52px;}
+    .quiz-option-btn:hover:not(:disabled){border-color:var(--indigo-light);transform:translateX(4px);background:rgba(99,102,241,0.09);}
+    .quiz-option-btn.correct{border-color:var(--emerald)!important;background:var(--emerald-soft)!important;}
+    .quiz-option-btn.wrong{border-color:var(--rose)!important;background:var(--rose-soft)!important;}
+    .quiz-feedback-sheet{padding:1.1rem;border-radius:var(--radius-sm);margin-top:0.9rem;display:none;animation:fadeInSheet 0.3s ease;}
+    @keyframes fadeInSheet{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+    .quiz-feedback-sheet.correct-sheet{background:var(--emerald-soft);border:1px solid var(--emerald);}
+    .quiz-feedback-sheet.wrong-sheet{background:var(--rose-soft);border:1px solid var(--rose);}
+    /* LEADERBOARD */
+    .mandal-card{padding:1.5rem;max-width:860px;margin:0 auto;}
+    .mandal-tabs{display:flex;gap:0.5rem;margin-bottom:1.1rem;overflow-x:auto;}
+    .mandal-tab-btn{padding:0.45rem 0.9rem;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.18);border-radius:var(--radius-sm);color:var(--text-secondary);font-weight:700;font-size:0.82rem;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.2s;}
+    .mandal-tab-btn.active{background:var(--indigo-soft);border-color:var(--indigo-light);color:var(--indigo);}
+    .leaderboard-row{display:grid;grid-template-columns:50px 1fr 110px 100px;align-items:center;padding:0.75rem 1rem;border-bottom:1px solid rgba(99,102,241,0.08);font-size:0.88rem;transition:background 0.2s;border-radius:6px;}
+    .leaderboard-row:hover{background:rgba(99,102,241,0.05);}
+    .leaderboard-row.user-row{background:rgba(99,102,241,0.08);border:1.5px solid rgba(99,102,241,0.3);font-weight:700;margin:0.35rem 0;border-radius:var(--radius-sm);}
+    .rank-num{font-weight:800;font-size:1.05rem;}
+    @media(max-width:480px){.leaderboard-row{grid-template-columns:38px 1fr 80px;font-size:0.8rem;padding:0.6rem 0.5rem;}.leaderboard-row>span:last-child{display:none;}}
+    /* QUESTS */
+    .quests-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;}
+    @media(max-width:780px){.quests-grid{grid-template-columns:1fr;}}
+    .quest-item-card{background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:var(--radius-sm);padding:0.9rem;display:flex;flex-direction:column;gap:0.45rem;transition:all 0.2s;}
+    .quest-item-card:hover{border-color:rgba(99,102,241,0.35);}
+    .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.65rem;}
+    .badge-card{background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:var(--radius-sm);padding:0.85rem 0.5rem;text-align:center;transition:all 0.25s;}
+    .badge-card.unlocked{border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.08);}
+    .badge-card.unlocked:hover{transform:translateY(-3px) scale(1.03);}
+    .badge-card.locked{opacity:0.4;filter:grayscale(1);}
+    .badge-icon{font-size:1.9rem;margin-bottom:0.3rem;}
+    .badge-title{font-size:0.73rem;font-weight:700;color:var(--text-primary);}
+    /* TOAST */
+    .xp-float-toast{position:fixed;pointer-events:none;font-family:var(--font-heading);font-weight:900;font-size:1.2rem;color:var(--emerald);text-shadow:0 0 14px rgba(16,185,129,0.7);z-index:10000;animation:floatUpToast 1.2s ease-out forwards;}
+    @keyframes floatUpToast{0%{opacity:0;transform:translateY(0) scale(0.8);}20%{opacity:1;transform:translateY(-15px) scale(1.15);}100%{opacity:0;transform:translateY(-55px) scale(1);}}
+    #confetti-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:99999;}
+    .footer-note{text-align:center;font-size:0.76rem;color:var(--text-muted);margin-top:2rem;line-height:1.6;}
+    /* RESPONSIVE */
+    @media(max-width:480px){
+      .container{padding:0.5rem 0.5rem calc(var(--bottom-nav-h) + 1.2rem);}
+      .hero-number{font-size:2.1rem;}
+      .title-group h1{font-size:1.05rem;}
+      .chakra-icon{width:32px;height:32px;}
+      #map-container{aspect-ratio:380/440;max-height:65vh;}
+      .map-controls-bar{justify-content:space-between;width:100%;gap:0.35rem;}
+      .control-group{flex:1;min-width:0;display:flex;align-items:center;gap:0.25rem;}
+      .control-group span{font-size:0.72rem!important;white-space:nowrap;}
+      select.custom-select{width:100%;min-width:0;font-size:0.75rem;padding:0.3rem 0.4rem;min-height:36px;}
+      .map-legend{flex-direction:column;gap:0.35rem;text-align:center;font-size:0.72rem;}
+      .gradient-bar-wrapper{max-width:100%;width:100%;margin:0.2rem 0;}
+      .feed-list{max-height:160px;}
+      .metric-box{padding:0.65rem;}
+      .metric-box .value{font-size:0.95rem;}
+      .card{padding:0.75rem;}
+      .quiz-card{padding:0.85rem;}
+      .quiz-question-box{font-size:0.95rem;}
+      .habit-chip{font-size:0.72rem;padding:0.25rem 0.5rem;}
+      .level-progress-wrapper{min-width:100%;flex:1 1 100%;}
+    }
+    @media(min-width:481px) and (max-width:768px){.hero-number{font-size:2.7rem;}#map-container{aspect-ratio:380/440;max-height:75vh;}}
+    @media(hover:none) and (pointer:coarse){.btn,select.custom-select{min-height:44px;}.quiz-option-btn{min-height:56px;}.bet-state-btn{min-height:60px;}}
+    @keyframes cardEnter{from{opacity:0;transform:translateY(16px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+    .card-enter{animation:cardEnter 0.4s cubic-bezier(0.4,0,0.2,1) both;}
+    .card-enter-delay-1{animation-delay:0.06s;}
+    .card-enter-delay-2{animation-delay:0.12s;}
+    .card-enter-delay-3{animation-delay:0.18s;}
+  </style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div class="container">
+  <div class="habit-bar glass card-enter">
+    <div class="habit-stat-cluster">
+      <div class="habit-chip streak-chip" id="streak-chip" title="Janma Dhara Streak"><span class="flame-icon">&#x1F525;</span><span id="streak-count">0</span> Days</div>
+      <div class="habit-chip xp-chip" id="xp-chip" title="Prana XP"><span>&#x26A1;</span><span id="xp-count">0</span> XP</div>
+      <div class="habit-chip mudra-chip" id="mudra-chip" title="Ashoka Mudras"><span>&#x1FA99;</span><span id="mudra-count">0</span></div>
+      <div class="habit-chip vitality-chip" id="vitality-chip" title="Census Vitality"><span>&#x2764;&#xFE0F;</span><span id="vitality-count">5/5</span></div>
+      <div class="habit-chip mandal-chip" id="mandal-chip" title="Bharat Demography Mandal Rank"><span>&#x1F3C6;</span><span id="mandal-badge-text">Pratham Mandal #10</span></div>
+    </div>
+    <div class="level-progress-wrapper" title="Prana Level Progression">
+      <span class="level-label" id="level-title">Lvl 1 Novice</span>
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <header class="header-bar glass card-enter card-enter-delay-1">
+    <div class="title-group">
+      <svg class="chakra-icon" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#1d4ed8" stroke-width="4"/>
+        <circle cx="50" cy="50" r="8" fill="#1d4ed8"/>
+        <g stroke="#1d4ed8" stroke-width="1.8">
+          <line x1="50" y1="5" x2="50" y2="95"/><line x1="5" y1="50" x2="95" y2="50"/>
+          <line x1="18.18" y1="18.18" x2="81.82" y2="81.82"/><line x1="81.82" y1="18.18" x2="18.18" y2="81.82"/>
+          <line x1="32.68" y1="7.32" x2="67.32" y2="92.68"/><line x1="7.32" y1="32.68" x2="92.68" y2="67.32"/>
+          <line x1="67.32" y1="7.32" x2="32.68" y2="92.68"/><line x1="92.68" y1="32.68" x2="7.32" y2="67.32"/>
+          <line x1="41.34" y1="5.9" x2="58.66" y2="94.1"/><line x1="5.9" y1="41.34" x2="94.1" y2="58.66"/>
+          <line x1="58.66" y1="5.9" x2="41.34" y2="94.1"/><line x1="94.1" y1="41.34" x2="5.9" y2="58.66"/>
+        </g>
+      </svg>
+      <div>
+        <h1>India Live Population &amp; Birth Ticker Map</h1>
+        <p>Bharat Demographic Research Engine &amp; Live Census Simulator &mdash; Sept 2026 Baseline</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button class="btn" id="audio-toggle-btn" title="Toggle Audio Chimes"><span id="audio-icon">&#x1F507;</span> Sound</button>
+    </div>
+  </header>
+  <nav class="mode-nav card-enter card-enter-delay-2">
+    <button class="nav-tab active" data-view-index="0">&#x1F5FA;&#xFE0F; Live Map <span class="tab-badge">Core</span></button>
+    <button class="nav-tab" data-view-index="1">&#x1F3AF; Janma Predictor <span class="tab-badge" style="background:var(--rose);color:#fff;">Game</span></button>
+    <button class="nav-tab" data-view-index="2">&#x1F9E0; Bharat SRS Quiz <span class="tab-badge" style="background:var(--emerald);color:#fff;">+75 XP</span></button>
+    <button class="nav-tab" data-view-index="3">&#x1F3C5; Mandal League <span class="tab-badge" id="nav-mandal-rank">Rank #10</span></button>
+    <button class="nav-tab" data-view-index="4">&#x1F4DC; Quests &amp; Badges <span class="tab-badge" id="quests-badge-count">0/3</span></button>
+  </nav>
+  <div class="hero-stat-card glass card-enter card-enter-delay-2">
+    <div class="hero-label">Estimated Population of India from September 2026</div>
+    <div class="hero-number" id="hero-count">1,493,119,816</div>
+    <div class="stat-badge-row">
+      <span class="stat-pill"><span class="pulse-dot"></span> Live: +1 birth every ~1.16s</span>
+      <span class="stat-pill">&#x1F465; Sept 2026 Baseline: 1,493,119,816</span>
+      <span class="stat-pill">&#x1F4CA; SRS Demographic Multipliers Active</span>
+    </div>
+  </div>
+  <div class="views-wrapper card-enter card-enter-delay-3">
+    <div class="views-track" id="views-track">
+      <!-- VIEW 0: LIVE MAP -->
+      <div class="view-section active-view" id="view-map">
+        <div class="dashboard-grid">
+          <div class="card glass">
+            <div class="sub-tabs-bar">
+              <button class="sub-tab active">&#x1F5FA;&#xFE0F; Map</button>
+              <button class="sub-tab">&#x26A1; Live Feed</button>
+              <button class="sub-tab">&#x1F30A; Wave Settings</button>
+            </div>
+            <div class="map-controls-bar">
+              <div class="control-group">
+                <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;">Float Icon:</span>
+                <select class="custom-select" id="emoji-select">
+                  <option value="+1 &#x1F476;">+1 &#x1F476; Baby</option>
+                  <option value="+1 &#x2728;">+1 &#x2728; Sparkles</option>
+                  <option value="+1 &#x1F338;">+1 &#x1F338; Lotus</option>
+                  <option value="+1 &#x1F1EE;&#x1F1F3;">+1 &#x1F1EE;&#x1F1F3; Flag</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;">Speed:</span>
+                <select class="custom-select" id="speed-select">
+                  <option value="1">1&times; Normal</option>
+                  <option value="2">2&times; Fast</option>
+                  <option value="5">5&times; Ultra</option>
+                  <option value="0.5">&frac12;&times; Slow</option>
+                </select>
+              </div>
+            </div>
+            <div id="map-container">
+              <div class="map-skeleton" id="map-skeleton">
+                <div class="map-skeleton-spinner"></div>
+                <div class="map-skeleton-text">Loading India Map Data&hellip;</div>
+              </div>
+              <div class="sea-waves-backdrop">
+                <canvas id="sea-waves-canvas"></canvas>
+                <div class="ocean-depth-overlay"></div>
+              </div>
+              <div class="sea-state-hud" id="sea-state-hud">&#x1F30A; Sea State: Calm</div>
+              <div id="map"></div>
+              <div id="tooltip"></div>
+            </div>
+            <div class="map-legend">
+              <span>Low Pop (Green)</span>
+              <div class="gradient-bar-wrapper">
+                <span style="color:#15803d;font-weight:800;">Low</span>
+                <div class="gradient-bar"></div>
+                <span style="color:#f97316;font-weight:800;">High</span>
+              </div>
+              <span>High Pop (Saffron)</span>
+            </div>
+          </div>
+          <div class="card glass">
+            <div class="control-group" style="margin-bottom:0.9rem;">
+              <span style="font-size:0.82rem;font-weight:700;color:var(--text-secondary);">State / UT Lookup:</span>
+              <select class="custom-select" id="state-dropdown" style="flex-grow:1;"><option value="">-- Choose a State or UT --</option></select>
+            </div>
+            <div class="detail-header">
+              <div>
+                <div class="detail-title" id="detail-name">Select a State</div>
+                <div class="detail-subtitle">Tap any region on the map for +5 Prana XP</div>
+              </div>
+              <span class="stat-pill" id="detail-tag" style="display:none;background:var(--indigo);color:#fff;font-weight:800;">Selected</span>
+            </div>
+            <div class="metric-box-grid">
+              <div class="metric-box"><div class="label">2026 Est. Population</div><div class="value" id="detail-pop">&mdash;</div></div>
+              <div class="metric-box"><div class="label">Share of India</div><div class="value" id="detail-share">&mdash;</div></div>
+              <div class="metric-box" style="grid-column:span 2;"><div class="label">State Birth Pace</div><div class="value" id="detail-pace" style="color:var(--emerald);">&mdash;</div></div>
+            </div>
+            <div class="feed-panel">
+              <div class="feed-title">
+                <span>&#x26A1; Live Birth Simulation Stream</span>
+                <span style="font-size:0.72rem;font-weight:normal;color:var(--text-muted);" id="last-state-pill">Waiting&hellip;</span>
+              </div>
+              <ul class="feed-list" id="feed-list">
+                <li class="feed-item" style="color:var(--text-muted);">Simulating birth events across India&hellip;</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- VIEW 1: JANMA PREDICTOR -->
+      <div class="view-section" id="view-predictor">
+        <div class="predictor-card glass">
+          <div class="predictor-hero-banner">
+            <h2 style="font-family:var(--font-heading);font-size:1.55rem;color:var(--text-primary);margin-bottom:0.4rem;">&#x1F3AF; Janma Predictor (&#x091C;&#x0928;&#x094D;&#x092E; &#x0905;&#x0928;&#x0941;&#x092E;&#x093E;&#x0928;)</h2>
+            <p style="font-size:0.88rem;color:var(--text-secondary);max-width:640px;margin:0 auto;">Pick the state where you predict the <strong>next newborn child</strong> will be registered! Win up to <strong>+50 Prana XP</strong> and <strong>Ashoka Mudras</strong> when the ticker strikes your predicted state.</p>
+          </div>
+          <div class="card-title-bar">
+            <div class="card-title">Choose Your Target State / UT</div>
+            <div id="active-bet-banner" style="font-size:0.83rem;font-weight:700;color:var(--emerald);">No active prediction. Click any state below!</div>
+          </div>
+          <div class="predictor-grid" id="predictor-state-grid"></div>
+          <div class="predictor-action-bar">
+            <div><span style="font-weight:700;font-size:0.88rem;">Current Prediction:</span><span id="current-target-name" style="color:var(--indigo);font-weight:800;margin-left:0.5rem;">None</span></div>
+            <div style="font-size:0.83rem;color:var(--text-muted);">Wins today: <strong id="predictor-wins-count" style="color:var(--emerald);">0</strong></div>
+          </div>
+        </div>
+      </div>
+      <!-- VIEW 2: QUIZ -->
+      <div class="view-section" id="view-quiz">
+        <div class="quiz-card glass">
+          <div class="quiz-header">
+            <div>
+              <h2 style="font-family:var(--font-heading);font-size:1.35rem;color:var(--text-primary);">&#x1F9E0; Bharat Demographic Challenge</h2>
+              <p style="font-size:0.78rem;color:var(--text-muted);">Real Sample Registration System (SRS) &amp; Census Data</p>
+            </div>
+            <div class="stat-pill" style="border-color:var(--rose);color:var(--rose);">Cost: 1 &#x2764;&#xFE0F; Vitality</div>
+          </div>
+          <div id="quiz-content-area">
+            <div class="quiz-question-box" id="quiz-question-text">Loading demographic challenge&hellip;</div>
+            <div class="quiz-options-list" id="quiz-options-container"></div>
+            <div class="quiz-feedback-sheet" id="quiz-feedback-sheet">
+              <h4 id="quiz-feedback-title" style="font-size:1rem;font-weight:800;margin-bottom:0.3rem;"></h4>
+              <p id="quiz-feedback-fact" style="font-size:0.83rem;line-height:1.5;color:var(--text-secondary);"></p>
+              <button class="btn btn-active" id="quiz-next-btn" style="margin-top:0.75rem;">Next Challenge &#x27A1;&#xFE0F;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- VIEW 3: LEADERBOARD -->
+      <div class="view-section" id="view-mandal">
+        <div class="mandal-card glass">
+          <div class="card-title-bar">
+            <div class="card-title">&#x1F3C6; Bharat Demography Ranks (&#x0938;&#x093E;&#x0902;&#x0916;&#x094D;&#x092F;&#x093F;&#x0915;&#x0940; &#x092E;&#x0902;&#x0921;&#x0932;)</div>
+            <span style="font-size:0.78rem;color:var(--text-muted);">Weekly Cycle Ends in 3 Days</span>
+          </div>
+          <div class="mandal-tabs">
+            <button class="mandal-tab-btn" data-mandal="Pratham">&#x1F949; Pratham Mandal</button>
+            <button class="mandal-tab-btn" data-mandal="Madhyam">&#x1F948; Madhyam Mandal</button>
+            <button class="mandal-tab-btn active" data-mandal="Utkarsh">&#x1F947; Utkarsh Mandal</button>
+            <button class="mandal-tab-btn" data-mandal="Shrestha">&#x1F48E; Shrestha Mandal</button>
+          </div>
+          <div class="leaderboard-table" id="leaderboard-container"></div>
+        </div>
+      </div>
+      <!-- VIEW 4: QUESTS -->
+      <div class="view-section" id="view-quests">
+        <div class="quests-grid">
+          <div class="card glass">
+            <div class="card-title-bar">
+              <div class="card-title">&#x1F4DC; Daily Jan-Sankhya Quests</div>
+              <span style="font-size:0.78rem;color:var(--text-muted);">Resets daily</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.65rem;" id="quests-container"></div>
+          </div>
+          <div class="card glass">
+            <div class="card-title-bar">
+              <div class="card-title">&#x1F396;&#xFE0F; Sanman Badges (&#x0938;&#x092E;&#x094D;&#x092E;&#x093E;&#x0928; &#x092A;&#x0926;&#x0915;)</div>
+              <span style="font-size:0.78rem;color:var(--amber);font-weight:700;" id="badges-unlocked-count">0/6 Unlocked</span>
+            </div>
+            <div class="badge-grid" id="badges-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="footer-note">
+    Live Population starting from September 2026 baseline (1,493,119,816 &mdash; UN Countrymeters daily growth model).<br>
+    State distribution map shaded by population ratio and Sample Registration System (SRS) birth-rate multipliers.<br>
+    <strong>India Population Dashboard v2</strong> &mdash; Premium glassmorphism design with weather-reactive ocean waves &amp; swipe navigation.
+  </p>
+</div>
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-btn active" data-view-index="0"><span class="bn-icon">&#x1F5FA;&#xFE0F;</span><span class="bn-label">Map</span></button>
+  <button class="bottom-nav-btn" data-view-index="1"><span class="bn-icon">&#x1F3AF;</span><span class="bn-label">Predict</span></button>
+  <button class="bottom-nav-btn" data-view-index="2"><span class="bn-icon">&#x1F9E0;</span><span class="bn-label">Quiz</span></button>
+  <button class="bottom-nav-btn" data-view-index="3"><span class="bn-icon">&#x1F3C6;</span><span class="bn-label">Ranks</span></button>
+  <button class="bottom-nav-btn" data-view-index="4"><span class="bn-icon">&#x1F396;&#xFE0F;</span><span class="bn-label">Quests</span></button>
+</nav>
+<script>
+(function(){
+  var statePop={"Andhra Pradesh":{pop:49386799,mult:0.9},"Arunachal Pradesh":{pop:1382611,mult:1.1},"Assam":{pop:31169272,mult:1.1},"Bihar":{pop:103804637,mult:1.3},"Chhattisgarh":{pop:25540196,mult:1.3},"Goa":{pop:1457723,mult:1.0},"Gujarat":{pop:60383628,mult:1.1},"Haryana":{pop:25353081,mult:1.1},"Himachal Pradesh":{pop:6856509,mult:0.9},"Jharkhand":{pop:32966238,mult:1.3},"Karnataka":{pop:61130704,mult:1.0},"Kerala":{pop:33387677,mult:0.65},"Madhya Pradesh":{pop:72597565,mult:1.3},"Maharashtra":{pop:112372972,mult:1.0},"Manipur":{pop:2721756,mult:1.1},"Meghalaya":{pop:2964007,mult:1.1},"Mizoram":{pop:1091014,mult:1.0},"Nagaland":{pop:1980602,mult:1.1},"Odisha":{pop:41947358,mult:1.1},"Punjab":{pop:27704236,mult:0.9},"Rajasthan":{pop:68621012,mult:1.3},"Sikkim":{pop:607688,mult:1.0},"Tamil Nadu":{pop:72138958,mult:0.65},"Telangana":{pop:35278734,mult:1.0},"Tripura":{pop:3671032,mult:1.0},"Uttarakhand":{pop:10116752,mult:0.9},"Uttar Pradesh":{pop:199581477,mult:1.3},"West Bengal":{pop:91347736,mult:0.9},"Andaman and Nicobar Islands":{pop:379944,mult:1.0},"Chandigarh":{pop:1054686,mult:0.65},"Dadra and Nagar Haveli and Daman and Diu":{pop:585764,mult:1.0},"Delhi":{pop:16753235,mult:0.65},"Jammu and Kashmir":{pop:12267032,mult:1.1},"Ladakh":{pop:274289,mult:1.0},"Lakshadweep":{pop:64429,mult:1.0},"Puducherry":{pop:1244464,mult:0.9}};
+  var sN=Object.keys(statePop),wts=sN.map(function(n){return statePop[n].pop*statePop[n].mult;}),totW=wts.reduce(function(a,b){return a+b;},0),totP=sN.reduce(function(a,n){return a+statePop[n].pop;},0),sf=1493119816/totP,nbpy=27200000,births=1493119816;
+  var heroEl=document.getElementById('hero-count');heroEl.textContent=births.toLocaleString();
+  var gs={streak:0,lastActiveDate:null,xp:0,mudras:0,vitality:5,maxVitality:5,mandalRank:10,predictorWins:0,statesExplored:{},unlockedBadges:{},quests:{exploreStates:{current:0,target:3,completed:false,name:"&#x1F5FA;&#xFE0F; Inspect 3 Different States",reward:25},predictBirth:{current:0,target:1,completed:false,name:"&#x1F3AF; Hit 1 Janma Prediction",reward:35},completeQuiz:{current:0,target:1,completed:false,name:"&#x1F9E0; Ace 1 Demographic Quiz",reward:40}}};
+  try{var sv=localStorage.getItem('bharat_v2_gs');if(sv){var pv=JSON.parse(sv);if(pv)Object.assign(gs,pv);}}catch(e){}
+  function save(){try{localStorage.setItem('bharat_v2_gs',JSON.stringify(gs));}catch(e){}updateUI();}
+  function updateUI(){document.getElementById('streak-count').textContent=gs.streak;document.getElementById('xp-count').textContent=gs.xp;document.getElementById('mudra-count').textContent=gs.mudras;document.getElementById('vitality-count').textContent=gs.vitality+'/'+gs.maxVitality;var lvl=Math.floor(gs.xp/100)+1,prog=gs.xp===0?0:Math.round(((gs.xp%100)/100)*100),titles=["Novice Observer","District Scholar","State Demographer","National Analyst","Chief Registrar","Demographic Laureate"];document.getElementById('level-title').textContent='Lvl '+lvl+' '+titles[Math.min(lvl-1,5)];document.getElementById('xp-bar-fill').style.width=prog+'%';}
+  function showToast(amt,ev){var t=document.createElement('div');t.className='xp-float-toast';t.textContent='+'+amt+' XP';var x=ev?(ev.clientX||window.innerWidth/2):window.innerWidth/2,y=ev?(ev.clientY||window.innerHeight/2):window.innerHeight/2;t.style.left=(x-25)+'px';t.style.top=(y-30)+'px';document.body.appendChild(t);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},1300);}
+  function earnXP(amt,ev){gs.xp+=amt;showToast(amt,ev);chime(true);save();renderLB();}
+  function earnM(amt){gs.mudras+=amt;save();}
+  var actx=null,aud=false;
+  function initA(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}
+  function tick_snd(){if(!aud)return;try{initA();var o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.setValueAtTime(587.33,actx.currentTime);o.frequency.exponentialRampToValueAtTime(880,actx.currentTime+0.08);g.gain.setValueAtTime(0.04,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.08);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+0.08);}catch(e){}}
+  function chime(ok){if(!aud)return;try{initA();var t=actx.currentTime,ns=ok?[440,554.37,659.25,880]:[330,311.13];ns.forEach(function(f,i){var o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.setValueAtTime(f,t+i*0.06);g.gain.setValueAtTime(0.08,t+i*0.06);g.gain.exponentialRampToValueAtTime(0.001,t+i*0.06+0.5);o.connect(g);g.connect(actx.destination);o.start(t+i*0.06);o.stop(t+i*0.06+0.5);});}catch(e){}}
+  document.getElementById('audio-toggle-btn').addEventListener('click',function(){aud=!aud;document.getElementById('audio-icon').textContent=aud?'&#x1F514;':'&#x1F507;';this.classList.toggle('btn-active',aud);if(aud)initA();});
+  var cc=document.getElementById('confetti-canvas'),cx=cc.getContext('2d'),cps=[];
+  function rcv(){cc.width=window.innerWidth;cc.height=window.innerHeight;}window.addEventListener('resize',rcv);rcv();
+  function burst(){var cols=['#f97316','#FFFFFF','#15803d','#6366f1','#10b981','#f59e0b','#f43f5e'];for(var i=0;i<90;i++)cps.push({x:window.innerWidth/2,y:window.innerHeight/2-50,vx:(Math.random()-0.5)*16,vy:(Math.random()-0.8)*16,size:Math.random()*8+4,color:cols[Math.floor(Math.random()*7)],rotation:Math.random()*360,rotSpeed:(Math.random()-0.5)*10,life:1});}
+  function ucv(){cx.clearRect(0,0,cc.width,cc.height);for(var i=cps.length-1;i>=0;i--){var p=cps[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.35;p.rotation+=p.rotSpeed;p.life-=0.015;cx.save();cx.translate(p.x,p.y);cx.rotate(p.rotation*Math.PI/180);cx.fillStyle=p.color;cx.globalAlpha=Math.max(0,p.life);cx.fillRect(-p.size/2,-p.size/2,p.size,p.size);cx.restore();if(p.life<=0)cps.splice(i,1);}requestAnimationFrame(ucv);}ucv();
+  var curV=0,vt=document.getElementById('views-track'),vsecs=vt.querySelectorAll('.view-section'),dtabs=document.querySelectorAll('.nav-tab'),bnbs=document.querySelectorAll('.bottom-nav-btn');
+  function goView(idx,anim){if(idx<0||idx>=5)return;curV=idx;vt.style.transition=anim===false?'none':'transform 0.35s cubic-bezier(0.4,0,0.2,1)';vt.style.transform='translateX(-'+(idx*100)+'%)';vsecs.forEach(function(s,i){s.classList.remove('active-view');if(i===idx){s.style.opacity='0';s.style.transform='translateY(12px)';requestAnimationFrame(function(){s.classList.add('active-view');s.style.opacity='';s.style.transform='';});}});dtabs.forEach(function(t,i){t.classList.toggle('active',i===idx);});bnbs.forEach(function(b,i){b.classList.toggle('active',i===idx);});}
+  dtabs.forEach(function(t){t.addEventListener('click',function(){goView(parseInt(this.getAttribute('data-view-index')));});});
+  bnbs.forEach(function(b){b.addEventListener('click',function(){goView(parseInt(this.getAttribute('data-view-index')));});});
+  var tsx=0,tsy=0,tst=0,sw=false;
+  vt.addEventListener('touchstart',function(e){if(e.target.closest('#map-container')){tsx=0;sw=false;return;}tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;tst=Date.now();sw=false;},{passive:true});
+  vt.addEventListener('touchmove',function(e){if(!tsx||e.target.closest('#map-container'))return;var dx=e.touches[0].clientX-tsx,dy=e.touches[0].clientY-tsy;if(!sw&&Math.abs(dy)>Math.abs(dx))return;if(Math.abs(dx)>8)sw=true;if(sw){var off=-(curV*100)+(dx/window.innerWidth*40);vt.style.transition='none';vt.style.transform='translateX('+off+'%)';}},{passive:true});
+  vt.addEventListener('touchend',function(e){if(!sw||!tsx)return;var dx=e.changedTouches[0].clientX-tsx,vel=Math.abs(dx)/(Date.now()-tst);if(Math.abs(dx)>48||vel>0.3){if(dx<0)goView(curV+1);else goView(curV-1);}else goView(curV);sw=false;tsx=0;},{passive:true});
+  document.querySelectorAll('.sub-tab').forEach(function(t){t.addEventListener('click',function(){document.querySelectorAll('.sub-tab').forEach(function(x){x.classList.remove('active');});this.classList.add('active');});});
+  var brw=[],css='calm',twa=0.55,tws=0.65,cwa=0.55,cws=0.65,shud=document.getElementById('sea-state-hud');
+  function recB(){var now=Date.now();brw.push(now);brw=brw.filter(function(t){return now-t<10000;});}
+  function updSea(){var rate=brw.length/10,ns,na,nsp,ht;if(rate>2.0){ns='storm';na=1.85;nsp=1.75;ht='&#x26C8;&#xFE0F; Sea State: Storm';shud.style.color='rgba(249,115,22,0.95)';shud.style.borderColor='rgba(249,115,22,0.5)';}else if(rate>1.0){ns='active';na=1.35;nsp=1.35;ht='&#x1F30A; Sea State: Active';shud.style.color='rgba(99,102,241,0.95)';shud.style.borderColor='rgba(99,102,241,0.45)';}else if(rate>0.5){ns='rolling';na=1.0;nsp=1.0;ht='&#x3030;&#xFE0F; Sea State: Rolling';shud.style.color='rgba(14,165,233,0.95)';shud.style.borderColor='rgba(14,165,233,0.35)';}else{ns='calm';na=0.55;nsp=0.65;ht='&#x1F319; Sea State: Calm';shud.style.color='rgba(200,210,255,0.85)';shud.style.borderColor='rgba(99,102,241,0.25)';}if(ns!==css){css=ns;shud.innerHTML=ht;}twa=na;tws=nsp;}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  (function(){var wc=document.getElementById('sea-waves-canvas');if(!wc)return;var wctx=wc.getContext('2d'),w=0,h=0,wt=0;
+  function rsz(){var r=wc.getBoundingClientRect();w=wc.width=Math.max(360,Math.round(r.width));h=wc.height=Math.max(480,Math.round(r.height));}
+  function dwl(by,amp,freq,spd,cc1,cc2,foam){var to=wt*cws*spd;wctx.beginPath();wctx.moveTo(0,h);wctx.lineTo(0,by);for(var x=0;x<=w;x+=3){var s1=Math.sin(x*freq+to),s2=Math.sin(x*freq*0.45-to*0.8),c1=Math.cos(x*freq*1.8+to*1.2);wctx.lineTo(x,by+(s1*0.65+s2*0.25+c1*0.1)*amp);}wctx.lineTo(w,h);wctx.closePath();var g=wctx.createLinearGradient(0,by-amp,0,h);g.addColorStop(0,cc1);g.addColorStop(1,cc2);wctx.fillStyle=g;wctx.fill();if(foam){wctx.beginPath();for(var fx=0;fx<=w;fx+=3){var fs1=Math.sin(fx*freq+to),fs2=Math.sin(fx*freq*0.45-to*0.8),fc1=Math.cos(fx*freq*1.8+to*1.2),fy=by+(fs1*0.65+fs2*0.25+fc1*0.1)*amp;if(fx===0)wctx.moveTo(fx,fy);else wctx.lineTo(fx,fy);}wctx.strokeStyle=css==='storm'?'rgba(249,115,22,0.5)':css==='active'?'rgba(99,102,241,0.5)':'rgba(5,217,232,0.4)';wctx.lineWidth=1.8;wctx.stroke();wctx.beginPath();for(var sx=0;sx<=w;sx+=38){var ss1=Math.sin(sx*freq+to),ss2=Math.sin(sx*freq*0.45-to*0.8),sc1=Math.cos(sx*freq*1.8+to*1.2),sy=by+(ss1*0.65+ss2*0.25+sc1*0.1)*amp;wctx.arc(sx+Math.sin(to+sx)*5,sy-2,1.2,0,Math.PI*2);}wctx.fillStyle='rgba(255,255,255,0.6)';wctx.fill();}}
+  var lf=0;function anim(){wt+=0.022;cwa=lerp(cwa,twa,0.025);cws=lerp(cws,tws,0.025);updSea();if(css==='storm'&&Math.random()<0.003)lf=8;wctx.clearRect(0,0,w,h);if(lf>0){wctx.fillStyle='rgba(200,210,255,'+(lf/8*0.18)+')';wctx.fillRect(0,0,w,h);lf--;}var bg=wctx.createLinearGradient(0,0,0,h);if(css==='storm'){bg.addColorStop(0,'#020510');bg.addColorStop(0.5,'#061222');bg.addColorStop(1,'#010410');}else{bg.addColorStop(0,'#021021');bg.addColorStop(0.45,'#04223d');bg.addColorStop(0.85,'#032c4f');bg.addColorStop(1,'#011222');}wctx.fillStyle=bg;wctx.fillRect(0,0,w,h);var a=cwa;dwl(h*0.35,14*a,0.005,0.8,'rgba(4,38,68,0.75)','rgba(2,16,32,0.95)',false);dwl(h*0.50,18*a,0.0075,-1.0,'rgba(3,72,122,0.70)','rgba(2,26,50,0.92)',false);dwl(h*0.65,22*a,0.010,1.3,'rgba(2,110,170,0.65)','rgba(3,40,75,0.90)',true);dwl(h*0.80,19*a,0.0135,-1.6,'rgba(5,175,220,0.55)','rgba(2,60,110,0.88)',true);dwl(h*0.92,15*a,0.0175,2.0,'rgba(5,217,232,0.42)','rgba(2,48,88,0.85)',true);requestAnimationFrame(anim);}window.addEventListener('resize',rsz);setTimeout(function(){rsz();anim();},80);})();
+  function pick(){var r=Math.random()*totW;for(var i=0;i<sN.length;i++){r-=wts[i];if(r<=0)return sN[i];}return sN[sN.length-1];}
+  function slug(n){return 'st-'+n.replace(/[^a-z0-9]/gi,'').toLowerCase();}
+  var dd=document.getElementById('state-dropdown');sN.slice().sort().forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;dd.appendChild(o);});
+  function showDet(name,ev,isUI){var s=statePop[name];if(!s)return;var cp=Math.round(s.pop*sf),sh=(s.pop/totP*100).toFixed(1)+'%',bi=nbpy*(s.pop*s.mult/totW),ps=31536000/bi,pt=ps<60?ps.toFixed(1)+'s':(ps/60).toFixed(1)+' min';document.getElementById('detail-name').textContent=name;document.getElementById('detail-pop').textContent=cp.toLocaleString();document.getElementById('detail-share').textContent=sh;document.getElementById('detail-pace').textContent='1 birth every '+pt;document.getElementById('detail-tag').style.display='inline-flex';dd.value=name;if(isUI&&!gs.statesExplored[name]){if(gs.streak===0){gs.streak=1;gs.lastActiveDate=new Date().toDateString();gs.unlockedBadges['b_first_step']=true;showToast(10,ev);gs.xp+=10;burst();}gs.statesExplored[name]=true;earnXP(5,ev);var cnt=Object.keys(gs.statesExplored).length;if(cnt>=5&&!gs.unlockedBadges['b_explorer']){gs.unlockedBadges['b_explorer']=true;burst();}if(gs.quests.exploreStates.current<3){gs.quests.exploreStates.current=cnt;if(gs.quests.exploreStates.current>=3&&!gs.quests.exploreStates.completed){gs.quests.exploreStates.completed=true;earnXP(gs.quests.exploreStates.reward,ev);}}renderQ();renderB();save();}}
+  var mxSq=Math.sqrt(Math.max.apply(null,sN.map(function(n){return statePop[n].pop;}))),cs=d3.scaleLinear().domain([0,mxSq/2,mxSq]).range(['#15803d','#FFFFFF','#f97316']),lsp=document.getElementById('last-state-pill'),selEl=null,fl=document.getElementById('feed-list'),bs='#cbd5e1';
+  d3.json('https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@2884453/topojson/india.json').then(function(topo){
+    var sk=document.getElementById('map-skeleton');sk.classList.add('hidden');setTimeout(function(){sk.style.display='none';},650);
+    var geoms=topo.objects.districts.geometries,byS=d3.group(geoms,function(g){return g.properties.st_nm;}),feats=[];
+    byS.forEach(function(gl,name){feats.push({type:'Feature',properties:{name:name},geometry:topojson.merge(topo,gl)});});
+    var fc={type:'FeatureCollection',features:feats},svg=d3.select('#map').append('svg').attr('viewBox','0 0 380 440').attr('width','100%').attr('height','100%').attr('preserveAspectRatio','xMidYMid meet').attr('role','img');
+    svg.append('title').text('Map of India shaded by state population');
+    var proj=d3.geoMercator().fitExtent([[24,18],[356,422]],fc),pathFn=d3.geoPath(proj),tip=d3.select('#tooltip');
+    svg.selectAll('path').data(feats).join('path').attr('d',pathFn).attr('class','state-path').attr('id',function(d){return slug(d.properties.name);}).attr('fill',function(d){var s=statePop[d.properties.name];return s?cs(Math.sqrt(s.pop)):'#e2e8f0';}).attr('stroke',bs).attr('stroke-width',0.6).style('cursor',function(d){return statePop[d.properties.name]?'pointer':'default';})
+    .on('mouseover',function(ev,d){var n=d.properties.name,s=statePop[n];if(!s)return;tip.style('visibility','visible').html('<strong>'+n+'</strong><br>Est. Pop: '+Math.round(s.pop*sf).toLocaleString()+'<br>Share: '+(s.pop/totP*100).toFixed(1)+'%');})
+    .on('mousemove',function(ev){var mb=document.getElementById('map-container').getBoundingClientRect(),tx=ev.clientX-mb.left,ty=ev.clientY-mb.top,tw=200,lp=(tx+15+tw>mb.width)?(tx-tw-10):(tx+15);tip.style('top',(ty-40)+'px').style('left',Math.max(4,lp)+'px');})
+    .on('mouseout',function(){tip.style('visibility','hidden');})
+    .on('click',function(ev,d){if(!statePop[d.properties.name])return;selByName(d.properties.name,ev,true);})
+    .on('touchstart',function(ev,d){ev.preventDefault();var n=d.properties.name,s=statePop[n];if(!s)return;var t=ev.touches[0],mb=document.getElementById('map-container').getBoundingClientRect(),tx=t.clientX-mb.left,ty=t.clientY-mb.top,tw=180,lp=(tx+15+tw>mb.width)?(tx-tw-10):(tx+15);tip.style('visibility','visible').html('<strong>'+n+'</strong><br>Est. Pop: '+Math.round(s.pop*sf).toLocaleString()+'<br>Share: '+(s.pop/totP*100).toFixed(1)+'%').style('top',Math.max(4,ty-40)+'px').style('left',Math.max(4,lp)+'px');})
+    .on('touchend',function(ev,d){ev.preventDefault();tip.style('visibility','hidden');if(!statePop[d.properties.name])return;var t=ev.changedTouches[0];selByName(d.properties.name,{clientX:t.clientX,clientY:t.clientY},true);});
+    function selByName(name,ev,isUI){if(selEl){selEl.setAttribute('stroke',bs);selEl.setAttribute('stroke-width','0.6');}var el=document.getElementById(slug(name));if(el){el.setAttribute('stroke','#6366f1');el.setAttribute('stroke-width','2.5');selEl=el;}showDet(name,ev,isUI);}
+    dd.addEventListener('change',function(){if(this.value)selByName(this.value,null,true);});
+    var tmr=null,bInt=1160,spd=1;
+    function addFeed(name){if(fl.children.length===1&&fl.children[0].style.color!=='')fl.innerHTML='';var item=document.createElement('li');item.className='feed-item';item.innerHTML='<span>&#x1F476; Birth in <strong>'+name+'</strong></span><span style="font-size:0.72rem;color:var(--text-muted);">'+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'</span>';fl.insertBefore(item,fl.firstChild);if(fl.children.length>6)fl.removeChild(fl.lastChild);}
+    function tickFn(){births++;heroEl.textContent=births.toLocaleString();heroEl.classList.remove('tick-flash');void heroEl.offsetWidth;heroEl.classList.add('tick-flash');var name=pick();lsp.textContent='Latest: '+name;tick_snd();addFeed(name);recB();chkPred(name);var el=document.getElementById(slug(name));if(el){var orig=el.getAttribute('fill');el.setAttribute('fill','#6366f1');setTimeout(function(){if(el!==selEl)el.setAttribute('fill',orig);},320);var d=d3.select(el).datum();if(d){var cen=pathFn.centroid(d),emj=document.getElementById('emoji-select'),sel=emj?emj.value:'+1 &#x1F476;';svg.append('text').attr('x',cen[0]).attr('y',cen[1]).attr('class','floating-emoji').text(sel).attr('text-anchor','middle').transition().duration(1200).attr('y',cen[1]-32).style('opacity',0).remove();}}}
+    function startT(){if(tmr)clearInterval(tmr);tmr=setInterval(tickFn,bInt/spd);}startT();
+    var ss=document.getElementById('speed-select');if(ss)ss.addEventListener('change',function(){spd=parseFloat(this.value)||1;startT();});
+    selByName('Uttar Pradesh',null,false);
+  });
+  var aps=null;
+  function initPG(){var grid=document.getElementById('predictor-state-grid');grid.innerHTML='';sN.forEach(function(name){var s=statePop[name],prob=(s.pop*s.mult)/totW,mult=Math.min(25,Math.max(1.5,(1/(prob*1.5)).toFixed(1))),btn=document.createElement('div');btn.className='bet-state-btn';btn.id='pred-btn-'+slug(name);btn.innerHTML='<div class="bet-state-name">'+name+'</div><div class="bet-state-meta"><span>Share: '+(s.pop/totP*100).toFixed(1)+'%</span><span class="multiplier-tag">+'+Math.round(mult*10)+' XP</span></div>';btn.addEventListener('click',function(){document.querySelectorAll('.bet-state-btn').forEach(function(b){b.classList.remove('selected-target');});btn.classList.add('selected-target');aps=name;document.getElementById('current-target-name').textContent=name+' (+'+Math.round(mult*10)+' XP)';document.getElementById('active-bet-banner').innerHTML='&#x1F3AF; Prediction locked on <strong>'+name+'</strong>! Watching live ticker&#x2026;';});grid.appendChild(btn);});}
+  function chkPred(bsn){if(!aps)return;if(bsn===aps){burst();chime(true);var s=statePop[bsn],prob=(s.pop*s.mult)/totW,rx=Math.round(Math.min(25,Math.max(1.5,1/(prob*1.5)))*10);earnXP(rx,null);earnM(20);gs.predictorWins++;document.getElementById('predictor-wins-count').textContent=gs.predictorWins;gs.quests.predictBirth.current=1;gs.quests.predictBirth.completed=true;renderQ();document.getElementById('active-bet-banner').innerHTML='&#x1F389; <span style="color:var(--emerald);font-weight:900;">BULLSEYE!</span> Birth in <strong>'+aps+'</strong>! Won +'+rx+' XP &amp; 20 &#x1FA99;!';var ob=document.getElementById('pred-btn-'+slug(aps));if(ob)ob.classList.remove('selected-target');aps=null;document.getElementById('current-target-name').textContent='None (Click any state to bet again)';}}
+  initPG();
+  var qqs=[{q:"Which state welcomes a newborn every ~2.3 seconds (highest volume)?",options:["Maharashtra","Uttar Pradesh","Bihar","West Bengal"],correct:1,fact:"With ~200M+ population and SRS multiplier 1.3, UP welcomes over 5.5 million babies annually (~1 every 2.3 seconds)."},
+  {q:"Which southern state has the lowest SRS birth multiplier (0.65) due to high female literacy?",options:["Kerala","Karnataka","Andhra Pradesh","Telangana"],correct:0,fact:"Kerala achieved demographic transition and holds an SRS birth multiplier of 0.65, with fertility rates below replacement level (~1.8)."},
+  {q:"Which Indian Union Territory has the smallest total population?",options:["Chandigarh","Ladakh","Lakshadweep","Puducherry"],correct:2,fact:"Lakshadweep is India's least populous UT with only ~64,429 residents, less than 0.005% of the total population."},
+  {q:"Approximately what percentage of India's total population resides in Uttar Pradesh?",options:["8.5%","11.2%","16.5%","24.0%"],correct:2,fact:"Uttar Pradesh accounts for roughly 16.5% of India's population — if independent, it would be the 5th most populous nation on Earth."},
+  {q:"Which state has a larger population: Maharashtra or Bihar?",options:["Maharashtra","Bihar","Both equal","Neither"],correct:0,fact:"Maharashtra (~112M+) edges ahead of Bihar (~104M+), though Bihar has a faster growth multiplier of 1.3."},
+  {q:"Which states share the highest SRS birth-rate multiplier of 1.3?",options:["Only Uttar Pradesh","Bihar and Rajasthan only","UP, Bihar, Rajasthan, MP, CG, and Jharkhand","All states equally"],correct:2,fact:"UP, Bihar, Rajasthan, Madhya Pradesh, Chhattisgarh, and Jharkhand all share the highest multiplier of 1.3, reflecting higher fertility rates per SRS data."},
+  {q:"Why does Delhi NCT share Kerala's SRS birth multiplier of 0.65?",options:["Low migration","High urbanisation and education lowering fertility","Cold climate","Government population caps"],correct:1,fact:"Delhi's highly urbanised population, high female education rates, and access to family planning have brought its effective birth rate close to Kerala's."}];
+  var cqi=0;
+  function renderQQ(){var item=qqs[cqi];document.getElementById('quiz-question-text').textContent=(cqi+1)+'. '+item.q;var con=document.getElementById('quiz-options-container');con.innerHTML='';document.getElementById('quiz-feedback-sheet').style.display='none';item.options.forEach(function(opt,idx){var btn=document.createElement('button');btn.className='quiz-option-btn';btn.innerHTML='<span>'+opt+'</span><span>&#x2192;</span>';btn.addEventListener('click',function(e){hdlQA(idx,btn,e);});con.appendChild(btn);});}
+  function hdlQA(si,sb,ev){if(gs.vitality<=0){alert('Out of Census Vitality! Complete quests to regenerate.');return;}gs.vitality--;save();var item=qqs[cqi],ok=(si===item.correct);document.querySelectorAll('.quiz-option-btn').forEach(function(b){b.disabled=true;});var sh=document.getElementById('quiz-feedback-sheet'),tl=document.getElementById('quiz-feedback-title'),fc=document.getElementById('quiz-feedback-fact');if(ok){sb.classList.add('correct');sh.className='quiz-feedback-sheet correct-sheet';tl.innerHTML='&#x1F389; Shabaash! Correct! (+35 Prana XP)';tl.style.color='var(--emerald)';burst();chime(true);earnXP(35,ev);earnM(10);gs.quests.completeQuiz.current=1;gs.quests.completeQuiz.completed=true;renderQ();}else{sb.classList.add('wrong');document.querySelectorAll('.quiz-option-btn')[item.correct].classList.add('correct');sh.className='quiz-feedback-sheet wrong-sheet';tl.innerHTML='&#x274C; Not quite! Review the SRS demographic fact:';tl.style.color='var(--rose)';chime(false);}fc.textContent=item.fact;sh.style.display='block';}
+  document.getElementById('quiz-next-btn').addEventListener('click',function(){cqi=(cqi+1)%qqs.length;renderQQ();});renderQQ();
+  var lbd=[{name:"Aarav Sharma",location:"Delhi (NCT)",xp:720,mandal:"Utkarsh"},{name:"Priya Sundaram",location:"Bengaluru, KA",xp:580,mandal:"Utkarsh"},{name:"Vikramaditya Deshmukh",location:"Pune, MH",xp:430,mandal:"Utkarsh"},{name:"You (Demographic Researcher)",location:"Bharat Census Lab",xp:gs.xp,mandal:"Utkarsh",isUser:true},{name:"Ananya Ghosh",location:"Kolkata, WB",xp:210,mandal:"Utkarsh"},{name:"Rohit Verma",location:"Lucknow, UP",xp:190,mandal:"Utkarsh"},{name:"Deepak Patel",location:"Ahmedabad, GJ",xp:160,mandal:"Utkarsh"},{name:"Meera Nair",location:"Kochi, KL",xp:140,mandal:"Utkarsh"}];
+  function renderLB(){var con=document.getElementById('leaderboard-container');con.innerHTML='';lbd.find(function(d){return d.isUser;}).xp=gs.xp;lbd.sort(function(a,b){return b.xp-a.xp;});lbd.forEach(function(item,idx){var rk=idx+1,row=document.createElement('div');row.className='leaderboard-row'+(item.isUser?' user-row':'');var med=rk===1?'&#x1F947;':(rk===2?'&#x1F948;':(rk===3?'&#x1F949;':rk));row.innerHTML='<span class="rank-num">'+med+'</span><div><span style="font-weight:700;">'+item.name+'</span><br><small style="color:var(--text-muted);">'+item.location+'</small></div><span style="font-weight:800;color:var(--emerald);">'+item.xp+' XP</span><span style="font-size:0.73rem;color:var(--text-muted);">'+(rk<=3?'&#x1F31F; Promotion':'&#x1F6E1;&#xFE0F; Safe Zone')+'</span>';con.appendChild(row);if(item.isUser){var mn=gs.xp>400?'Utkarsh':(gs.xp>150?'Madhyam':'Pratham');document.getElementById('mandal-badge-text').textContent=mn+' Mandal #'+rk;var nm=document.getElementById('nav-mandal-rank');if(nm)nm.textContent='Rank #'+rk;}});}renderLB();
+  function renderQ(){var con=document.getElementById('quests-container');con.innerHTML='';var cc=0;Object.keys(gs.quests).forEach(function(k){var q=gs.quests[k];if(q.completed)cc++;var pct=Math.min(100,Math.round((q.current/q.target)*100)),card=document.createElement('div');card.className='quest-item-card';card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:700;font-size:0.88rem;">'+q.name+'</span><span style="font-weight:800;color:var(--emerald);font-size:0.78rem;">+'+q.reward+' XP</span></div><div style="font-size:0.78rem;color:var(--text-muted);">'+q.current+' / '+q.target+' ('+pct+'%)</div><div class="xp-bar-bg"><div class="xp-bar-fill" style="width:'+pct+'%;"></div></div>';con.appendChild(card);});document.getElementById('quests-badge-count').textContent=cc+'/3';}
+  var bls=[{id:"b_first_step",icon:"&#x1F331;",title:"Pratham Kadam",desc:"Started exploring India's demographic map"},{id:"b_explorer",icon:"&#x1F5FA;&#xFE0F;",title:"Bharat Explorer",desc:"Inspected 5 different States or UTs"},{id:"b_prophet",icon:"&#x1F3AF;",title:"Janma Prophet",desc:"Predicted an exact state newborn match"},{id:"b_srs_scholar",icon:"&#x1F9E0;",title:"SRS Statistician",desc:"Scored 100% on a Demographic Challenge"},{id:"b_dhara",icon:"&#x1F525;",title:"Dhara Samrakshak",desc:"Held a 3-day continuous Janma Dhara streak"},{id:"b_laureate",icon:"&#x1F48E;",title:"Census Laureate",desc:"Earned 500+ Prana XP"}];
+  function renderB(){var con=document.getElementById('badges-container');con.innerHTML='';var uc=0;bls.forEach(function(b){var iu=!!gs.unlockedBadges[b.id]||(b.id==='b_prophet'&&gs.predictorWins>0)||(b.id==='b_dhara'&&gs.streak>=3)||(b.id==='b_laureate'&&gs.xp>=500);if(iu&&!gs.unlockedBadges[b.id])gs.unlockedBadges[b.id]=true;if(iu)uc++;var card=document.createElement('div');card.className='badge-card '+(iu?'unlocked':'locked');card.title=b.desc;card.innerHTML='<div class="badge-icon">'+b.icon+'</div><div class="badge-title">'+b.title+'</div><div style="font-size:0.68rem;color:var(--text-muted);margin-top:0.2rem;">'+(iu?'Unlocked &#x2728;':'Locked &#x1F512;')+'</div>';con.appendChild(card);});document.getElementById('badges-unlocked-count').textContent=uc+'/'+bls.length+' Unlocked';}
+  renderQ();renderB();updateUI();
+  document.querySelectorAll('.mandal-tab-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.mandal-tab-btn').forEach(function(b){b.classList.remove('active');});this.classList.add('active');});});
+  goView(0,false);
+})();
+</script>
+</body>
+</html>

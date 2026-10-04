@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>India Live Population Ticker Map (September 2026 Baseline)</title>
+  <meta name="description" content="Interactive map of India featuring live population ticker starting from September 2026 baseline (1,493,119,816), real-time demographic simulation, and population density visualization.">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- D3.js and TopoJSON -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+
+  <style>
+    :root {
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-heading: 'Cinzel', serif;
+      
+      /* Light Palette */
+      --bg-main: #f4f6f8;
+      --surface-1: #ffffff;
+      --surface-2: #f8fafc;
+      --border: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      
+      /* India Flag Colors */
+      --flag-saffron: #FF9933;
+      --flag-white: #FFFFFF;
+      --flag-green: #138808;
+      --ashoka-blue: #000080;
+      --ashoka-blue-light: #2563eb;
+      --ashoka-glow: rgba(0, 0, 128, 0.35);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] {
+      --bg-main: #0a0f1d;
+      --surface-1: #131b2e;
+      --surface-2: #1c273e;
+      --border: #2a3756;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --ashoka-blue: #3b82f6;
+      --ashoka-blue-light: #60a5fa;
+      --ashoka-glow: rgba(59, 130, 246, 0.4);
+      --shadow-md: 0 10px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding: 1.5rem 1rem;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header Styling */
+    .header-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--flag-saffron);
+      border-bottom: 4px solid var(--flag-green);
+      padding: 1.25rem 1.75rem;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      margin-bottom: 1.5rem;
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .chakra-icon {
+      width: 40px;
+      height: 40px;
+      animation: rotateChakra 24s linear infinite;
+    }
+
+    @keyframes rotateChakra {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .title-group h1 {
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, var(--flag-saffron) 30%, var(--text-primary) 70%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-group p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface-2);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--ashoka-blue-light);
+      background: var(--surface-1);
+      transform: translateY(-1px);
+    }
+
+    .btn-active {
+      background: var(--ashoka-blue) !important;
+      color: #ffffff !important;
+      border-color: var(--ashoka-blue) !important;
+    }
+
+    /* Main Dashboard Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-md);
+      position: relative;
+    }
+
+    /* Hero Banner Stat */
+    .hero-stat-card {
+      text-align: center;
+      background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1rem;
+      margin-bottom: 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--flag-saffron), var(--flag-white), var(--flag-green));
+    }
+
+    .hero-label {
+      font-size: 0.825rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .hero-number {
+      font-family: var(--font-heading);
+      font-size: 3.25rem;
+      font-weight: 800;
+      color: var(--flag-saffron);
+      text-shadow: 0 0 25px rgba(255, 153, 51, 0.25);
+      font-variant-numeric: tabular-nums;
+      margin: 0.2rem 0;
+    }
+
+    .stat-badge-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-pill {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    /* Controls Bar above Map */
+    .map-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    select.custom-select {
+      background: var(--surface-2);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Map Styling */
+    #map-container {
+      position: relative;
+      width: 100%;
+      min-height: 480px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #map svg {
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
+    }
+
+    path.state-path {
+      transition: fill 0.3s ease, stroke 0.2s ease;
+    }
+
+    path.state-path:hover {
+      filter: brightness(1.15) contrast(1.1);
+    }
+
+    /* Floating Emoji Style */
+    .floating-emoji {
+      font-size: 15px;
+      font-weight: 700;
+      fill: var(--text-primary);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+
+    /* Map Legend */
+    .map-legend {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .gradient-bar-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-grow: 1;
+      max-width: 260px;
+      margin: 0 0.75rem;
+    }
+
+    .gradient-bar {
+      height: 10px;
+      flex-grow: 1;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #138808 0%, #FFFFFF 50%, #FF9933 100%);
+      border: 1px solid var(--border);
+    }
+
+    /* Detail Card */
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-title {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .detail-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .metric-box-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .metric-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+    }
+
+    .metric-box .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .metric-box .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Live Feed Ticker Panel */
+    .feed-panel {
+      margin-top: 1rem;
+    }
+
+    .feed-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .feed-list {
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding-right: 0.25rem;
+    }
+
+    .feed-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--ashoka-blue);
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute;
+      visibility: hidden;
+      background: var(--surface-1);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      box-shadow: var(--shadow-md);
+      pointer-events: none;
+      z-index: 100;
+      max-width: 220px;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1.5rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Top Navigation Header -->
+  <header class="header-bar">
+    <div class="title-group">
+      <!-- Ashoka Chakra SVG Icon -->
+      <svg class="chakra-icon" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#000080" stroke-width="4"/>
+        <circle cx="50" cy="50" r="8" fill="#000080"/>
+        <!-- 24 Spokes -->
+        <g stroke="#000080" stroke-width="2">
+          <line x1="50" y1="5" x2="50" y2="95"/>
+          <line x1="5" y1="50" x2="95" y2="50"/>
+          <line x1="18.18" y1="18.18" x2="81.82" y2="81.82"/>
+          <line x1="81.82" y1="18.18" x2="18.18" y2="81.82"/>
+          <line x1="32.68" y1="7.32" x2="67.32" y2="92.68"/>
+          <line x1="7.32" y1="32.68" x2="92.68" y2="67.32"/>
+          <line x1="67.32" y1="7.32" x2="32.68" y2="92.68"/>
+          <line x1="92.68" y1="32.68" x2="7.32" y2="67.32"/>
+          <line x1="41.34" y1="5.9" x2="58.66" y2="94.1"/>
+          <line x1="5.9" y1="41.34" x2="94.1" y2="58.66"/>
+          <line x1="58.66" y1="5.9" x2="41.34" y2="94.1"/>
+          <line x1="94.1" y1="41.34" x2="5.9" y2="58.66"/>
+        </g>
+      </svg>
+      <div>
+        <h1>India Live Population & Birth Ticker Map</h1>
+        <p>Demographic model across Indian States & Union Territories starting from September 2026</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button class="btn" id="audio-toggle-btn" title="Toggle audio chime on birth tick">
+        <span id="audio-icon">🔇</span> Sound
+      </button>
+      <button class="btn" id="theme-toggle-btn" title="Toggle light/dark mode">
+        <span id="theme-icon">🌙</span> Dark Mode
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Stat Banner -->
+  <div class="hero-stat-card">
+    <div class="hero-label">Estimated Population of India from September 2026</div>
+    <div class="hero-number" id="hero-count">1,493,119,816</div>
+    <div class="stat-badge-row">
+      <span class="stat-pill"><span class="pulse-dot"></span> Live Pace: +1 birth every ~1.16s</span>
+      <span class="stat-pill">👥 Sept 2026 Baseline: 1,493,119,816</span>
+      <span class="stat-pill">📊 UN Projection Model (Countrymeters)</span>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+    <!-- Left Column: Map -->
+    <div class="card">
+      <div class="map-controls-bar">
+        <div class="control-group">
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Simulation Speed:</span>
+          <select class="custom-select" id="speed-select" title="Simulation Speed">
+            <option value="1">1x Speed (1.16s)</option>
+            <option value="2">2x Speed (0.58s)</option>
+            <option value="5">5x Speed (0.23s)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Float Icon:</span>
+          <select class="custom-select" id="emoji-select">
+            <option value="+1 👶">+1 👶 Baby</option>
+            <option value="+1 ✨">+1 ✨ Sparkles</option>
+            <option value="+1 🌸">+1 🌸 Lotus</option>
+            <option value="+1 🇮🇳">+1 🇮🇳 Flag</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="map-container">
+        <div id="map"></div>
+        <div id="tooltip"></div>
+      </div>
+
+      <!-- Map Legend -->
+      <div class="map-legend">
+        <span>Fewer (Lower Pop)</span>
+        <div class="gradient-bar-wrapper">
+          <span style="color: #138808; font-weight: bold;">Green</span>
+          <div class="gradient-bar"></div>
+          <span style="color: #FF9933; font-weight: bold;">Saffron</span>
+        </div>
+        <span>More (Higher Pop)</span>
+      </div>
+    </div>
+
+    <!-- Right Column: State Details -->
+    <div class="card">
+      <div class="control-group" style="margin-bottom: 1rem;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Select State/UT:</span>
+        <select class="custom-select" id="state-dropdown" style="flex-grow: 1;">
+          <option value="">-- Choose a State or UT --</option>
+        </select>
+      </div>
+
+      <div class="detail-header">
+        <div>
+          <div class="detail-title" id="detail-name">Select a State</div>
+          <div class="detail-subtitle">Tap any region on the map for statistics</div>
+        </div>
+        <span class="stat-pill" id="detail-tag" style="display: none; background: var(--ashoka-blue); color: #fff;">Selected</span>
+      </div>
+
+      <div class="metric-box-grid">
+        <div class="metric-box">
+          <div class="label">2026 Est. Population</div>
+          <div class="value" id="detail-pop">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Share of India</div>
+          <div class="value" id="detail-share">—</div>
+        </div>
+        <div class="metric-box" style="grid-column: span 2;">
+          <div class="label">State Birth Pace</div>
+          <div class="value" id="detail-pace" style="color: var(--flag-saffron);">—</div>
+        </div>
+      </div>
+
+      <!-- Live Stream Feed -->
+      <div class="feed-panel">
+        <div class="feed-title">
+          <span>⚡ Live Birth Simulation Stream</span>
+          <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);" id="last-state-pill">Waiting...</span>
+        </div>
+        <ul class="feed-list" id="feed-list">
+          <li class="feed-item" style="color: var(--text-muted); border-left-color: var(--border);">Simulating birth events across India...</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    Live Population starting from September 2026 baseline (1,493,119,816 based on UN Countrymeters daily growth model).<br>
+    State distribution map shaded by population ratio and Sample Registration System (SRS) birth-rate multipliers.<br>
+    Color palette features the <strong>Indian Tricolor</strong> (Green &rarr; White &rarr; Saffron) with <strong>Ashoka Chakra Navy Blue</strong> selection accents.
+  </p>
+</div>
+
+<script>
+(function(){
+  // 1. State Population Data
+  var statePop = {
+    "Andhra Pradesh":{pop:49386799,mult:0.9},
+    "Arunachal Pradesh":{pop:1382611,mult:1.1},
+    "Assam":{pop:31169272,mult:1.1},
+    "Bihar":{pop:103804637,mult:1.3},
+    "Chhattisgarh":{pop:25540196,mult:1.3},
+    "Goa":{pop:1457723,mult:1.0},
+    "Gujarat":{pop:60383628,mult:1.1},
+    "Haryana":{pop:25353081,mult:1.1},
+    "Himachal Pradesh":{pop:6856509,mult:0.9},
+    "Jharkhand":{pop:32966238,mult:1.3},
+    "Karnataka":{pop:61130704,mult:1.0},
+    "Kerala":{pop:33387677,mult:0.65},
+    "Madhya Pradesh":{pop:72597565,mult:1.3},
+    "Maharashtra":{pop:112372972,mult:1.0},
+    "Manipur":{pop:2721756,mult:1.1},
+    "Meghalaya":{pop:2964007,mult:1.1},
+    "Mizoram":{pop:1091014,mult:1.0},
+    "Nagaland":{pop:1980602,mult:1.1},
+    "Odisha":{pop:41947358,mult:1.1},
+    "Punjab":{pop:27704236,mult:0.9},
+    "Rajasthan":{pop:68621012,mult:1.3},
+    "Sikkim":{pop:607688,mult:1.0},
+    "Tamil Nadu":{pop:72138958,mult:0.65},
+    "Telangana":{pop:35278734,mult:1.0},
+    "Tripura":{pop:3671032,mult:1.0},
+    "Uttarakhand":{pop:10116752,mult:0.9},
+    "Uttar Pradesh":{pop:199581477,mult:1.3},
+    "West Bengal":{pop:91347736,mult:0.9},
+    "Andaman and Nicobar Islands":{pop:379944,mult:1.0},
+    "Chandigarh":{pop:1054686,mult:0.65},
+    "Dadra and Nagar Haveli and Daman and Diu":{pop:585764,mult:1.0},
+    "Delhi":{pop:16753235,mult:0.65},
+    "Jammu and Kashmir":{pop:12267032,mult:1.1},
+    "Ladakh":{pop:274289,mult:1.0},
+    "Lakshadweep":{pop:64429,mult:1.0},
+    "Puducherry":{pop:1244464,mult:0.9}
+  };
+
+  var stateNames = Object.keys(statePop);
+  var weights = stateNames.map(function(n){ return statePop[n].pop * statePop[n].mult; });
+  var totalWeight = weights.reduce(function(a,b){ return a + b; }, 0);
+  var totalPop = stateNames.reduce(function(a,n){ return a + statePop[n].pop; }, 0);
+  var scaleFactor = 1493119816 / totalPop;
+  var nationalBirthsPerYear = 27200000;
+
+  // First number baseline starting exactly at 1,493,119,816 (September 2026)
+  var September2026BasePopulation = 1493119816;
+  var births = September2026BasePopulation;
+
+  var heroEl = document.getElementById('hero-count');
+  heroEl.textContent = births.toLocaleString();
+
+  // Sound Synth Context
+  var audioCtx = null;
+  var isAudioEnabled = false;
+
+  function playTickSound() {
+    if(!isAudioEnabled) return;
+    try {
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08); // A5
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.08);
+    } catch(e){}
+  }
+
+  function pickState(){
+    var r = Math.random() * totalWeight;
+    for(var i = 0; i < stateNames.length; i++){
+      r -= weights[i];
+      if(r <= 0) return stateNames[i];
+    }
+    return stateNames[stateNames.length - 1];
+  }
+
+  function slug(n){ return 'st-' + n.replace(/[^a-z0-9]/gi, '').toLowerCase(); }
+
+  // Populate Dropdown
+  var dropdownEl = document.getElementById('state-dropdown');
+  stateNames.sort().forEach(function(name){
+    var opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    dropdownEl.appendChild(opt);
+  });
+
+  function showDetail(name){
+    var s = statePop[name];
+    if(!s) return;
+
+    var currentPop = Math.round(s.pop * scaleFactor);
+    var share = (s.pop / totalPop * 100).toFixed(1) + '%';
+    var births_i = nationalBirthsPerYear * (s.pop * s.mult / totalWeight);
+    var paceSec = 31536000 / births_i;
+    var paceText = paceSec < 60 ? paceSec.toFixed(1) + 's' : (paceSec / 60).toFixed(1) + ' min';
+
+    document.getElementById('detail-name').textContent = name;
+    document.getElementById('detail-pop').textContent = currentPop.toLocaleString();
+    document.getElementById('detail-share').textContent = share;
+    document.getElementById('detail-pace').textContent = '1 birth every ' + paceText;
+
+    document.getElementById('detail-tag').style.display = 'inline-flex';
+    dropdownEl.value = name;
+  }
+
+  // 2. Color Scale: Indian Flag Gradient (Green -> White -> Saffron)
+  var maxSqrt = Math.sqrt(Math.max.apply(null, stateNames.map(function(n){ return statePop[n].pop; })));
+  
+  var color = d3.scaleLinear()
+    .domain([0, maxSqrt / 2, maxSqrt])
+    .range(['#138808', '#FFFFFF', '#FF9933']);
+
+  var lastStatePill = document.getElementById('last-state-pill');
+  var selectedEl = null;
+  var feedList = document.getElementById('feed-list');
+
+  var isDark = true;
+  var baseStroke = '#2a3756';
+
+  // Theme Toggle
+  document.getElementById('theme-toggle-btn').addEventListener('click', function(){
+    var html = document.documentElement;
+    var isCurrentDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isCurrentDark ? 'light' : 'dark');
+    this.querySelector('#theme-icon').textContent = isCurrentDark ? '☀️' : '🌙';
+    this.childNodes[2].textContent = isCurrentDark ? ' Light Mode' : ' Dark Mode';
+    isDark = !isCurrentDark;
+    baseStroke = isDark ? '#2a3756' : '#cbd5e1';
+
+    d3.selectAll('path.state-path')
+      .attr('stroke', function(){
+        return this === selectedEl ? '#000080' : baseStroke;
+      });
+  });
+
+  // Audio Toggle
+  document.getElementById('audio-toggle-btn').addEventListener('click', function(){
+    isAudioEnabled = !isAudioEnabled;
+    this.querySelector('#audio-icon').textContent = isAudioEnabled ? '🔔' : '🔇';
+    this.classList.toggle('btn-active', isAudioEnabled);
+  });
+
+  // TopoJSON Map Rendering
+  d3.json('https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@2884453/topojson/india.json').then(function(topo){
+    var geoms = topo.objects.districts.geometries;
+    var byState = d3.group(geoms, function(g){ return g.properties.st_nm; });
+    var features = [];
+
+    byState.forEach(function(geomList, name){
+      var merged = topojson.merge(topo, geomList);
+      features.push({type: 'Feature', properties: {name: name}, geometry: merged});
+    });
+
+    var fc = {type: 'FeatureCollection', features: features};
+    var svg = d3.select('#map').append('svg')
+      .attr('viewBox', '0 0 380 460')
+      .attr('width', '100%')
+      .attr('role', 'img');
+
+    svg.append('title').text('Map of India shaded by state population');
+
+    var projection = d3.geoMercator().fitSize([380, 460], fc);
+    var path = d3.geoPath(projection);
+
+    var tooltip = d3.select('#tooltip');
+
+    svg.selectAll('path').data(features).join('path')
+      .attr('d', path)
+      .attr('class', 'state-path')
+      .attr('id', function(d){ return slug(d.properties.name); })
+      .attr('fill', function(d){
+        var s = statePop[d.properties.name];
+        return s ? color(Math.sqrt(s.pop)) : (isDark ? '#1e293b' : '#e2e8f0');
+      })
+      .attr('stroke', baseStroke)
+      .attr('stroke-width', 0.6)
+      .style('cursor', function(d){ return statePop[d.properties.name] ? 'pointer' : 'default'; })
+      .on('mouseover', function(event, d){
+        var name = d.properties.name;
+        var s = statePop[name];
+        if(!s) return;
+        tooltip.style('visibility', 'visible')
+          .html('<strong>' + name + '</strong><br>Est. Pop: ' + Math.round(s.pop*scaleFactor).toLocaleString() + '<br>Share: ' + (s.pop/totalPop*100).toFixed(1) + '%');
+      })
+      .on('mousemove', function(event){
+        var mapBounds = document.getElementById('map-container').getBoundingClientRect();
+        tooltip.style('top', (event.clientY - mapBounds.top - 40) + 'px')
+               .style('left', (event.clientX - mapBounds.left + 15) + 'px');
+      })
+      .on('mouseout', function(){
+        tooltip.style('visibility', 'hidden');
+      })
+      .on('click', function(event, d){
+        var name = d.properties.name;
+        if(!statePop[name]) return;
+        selectStateByName(name);
+      });
+
+    function selectStateByName(name) {
+      if(selectedEl){
+        selectedEl.setAttribute('stroke', baseStroke);
+        selectedEl.setAttribute('stroke-width', '0.6');
+      }
+      var el = document.getElementById(slug(name));
+      if(el){
+        el.setAttribute('stroke', '#000080'); // Ashoka Chakra Navy Blue
+        el.setAttribute('stroke-width', '2.5');
+        selectedEl = el;
+      }
+      showDetail(name);
+    }
+
+    // Dropdown change listener
+    dropdownEl.addEventListener('change', function(){
+      if(this.value) selectStateByName(this.value);
+    });
+
+    // Live Ticker Simulation
+    var timer = null;
+    var baseInterval = 1160;
+    var speedMultiplier = 1;
+
+    function addFeedItem(name) {
+      if(feedList.children.length === 1 && feedList.children[0].style.color !== '') {
+        feedList.innerHTML = '';
+      }
+      var item = document.createElement('li');
+      item.className = 'feed-item';
+      item.innerHTML = '<span>👶 Birth added in <strong>' + name + '</strong></span><span style="font-size:0.75rem; color:var(--text-secondary);">' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) + '</span>';
+      feedList.insertBefore(item, feedList.firstChild);
+      if(feedList.children.length > 6) {
+        feedList.removeChild(feedList.lastChild);
+      }
+    }
+
+    function tick() {
+      births++;
+      heroEl.textContent = births.toLocaleString();
+      var name = pickState();
+      lastStatePill.textContent = 'Latest: ' + name;
+      playTickSound();
+
+      addFeedItem(name);
+
+      var el = document.getElementById(slug(name));
+      if(el){
+        var orig = el.getAttribute('fill');
+        el.setAttribute('fill', '#000080'); // Flash Navy Blue
+        setTimeout(function(){
+          if(el !== selectedEl) el.setAttribute('fill', orig);
+          else el.setAttribute('fill', orig);
+        }, 350);
+
+        // Float Emoji Animation up from State Centroid
+        var d = d3.select(el).datum();
+        if(d) {
+          var centroid = path.centroid(d);
+          var selectedEmoji = document.getElementById('emoji-select').value;
+          var emoji = svg.append("text")
+            .attr("x", centroid[0])
+            .attr("y", centroid[1])
+            .attr("class", "floating-emoji")
+            .text(selectedEmoji)
+            .attr("text-anchor", "middle");
+
+          emoji.transition()
+            .duration(1200)
+            .attr("y", centroid[1] - 32)
+            .style("opacity", 0)
+            .remove();
+        }
+      }
+    }
+
+    function startTimer() {
+      if(timer) clearInterval(timer);
+      timer = setInterval(tick, baseInterval / speedMultiplier);
+    }
+
+    startTimer();
+
+    document.getElementById('speed-select').addEventListener('change', function(){
+      speedMultiplier = parseFloat(this.value);
+      startTimer();
+    });
+
+    // Auto-select Uttar Pradesh as default view
+    selectStateByName("Uttar Pradesh");
+  });
+})();
+</script>
+
+</body>
+</html>

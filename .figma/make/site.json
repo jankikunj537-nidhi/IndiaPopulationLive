@@ -1,0 +1,10 @@
+{
+  "description": "Displays a real-time population counter using demographic data and projections to visualize estimated population changes dynamically for public insight.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
